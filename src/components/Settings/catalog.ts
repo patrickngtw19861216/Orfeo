@@ -25,6 +25,7 @@ export type SettingId =
   | 'showDemo' | 'chordTranscription'
   | 'noteEditor' | 'tapTempo' | 'tempoWarnings' | 'countIn' | 'skipEmptyBars' | 'handAssignment' | 'loopRegion' | 'focusMode'
   | 'stepThrough' | 'chordPrompter' | 'closePanels' | 'handTags' | 'trackVu'
+  | 'waitForInput' | 'loopUntilCorrect' | 'durationFeedback' | 'tempoTrainer' | 'practiceStats'
   | 'displaySystem' | 'accidentals' | 'chordTracking' | 'chordReading' | 'chordNaming'
   | 'keyRange' | 'showOctaves' | 'showNoteNames' | 'reflectPianoRoll' | 'preciseScrubTime' | 'explorerPause'
   | 'rollZoom' | 'barNumbers' | 'playbar' | 'visualEffects'
@@ -121,6 +122,21 @@ export const SETTINGS: SettingInfo[] = [
   { id: 'handTags', group: 'practice', name: t`Hand tags`, summary: t`Small L/R letters on hand-coloured keys.`,
     description: t`Prints a small L/R badge on hand-coloured keys, for colourblind players who can't rely on blue vs. pink alone.`,
     keywords: 'left right colorblind colourblind letters' },
+  { id: 'waitForInput', group: 'practice', name: t`Wait for Input`, summary: t`Pause at each step until you play the correct note(s).`,
+    description: t`Pauses at each step and highlights the note(s) to play in green. Press the correct note(s) to advance. Use together with Step Through.`,
+    keywords: 'wait input interactive practice midi keyboard' },
+  { id: 'loopUntilCorrect', group: 'practice', name: t`Loop until correct`, summary: t`Restart from loop region on a wrong note.`,
+    description: t`On a wrong note, restart from the loop region start (or beginning). Requires Wait for Input + a loop region set on the piano roll.`,
+    keywords: 'loop repeat wrong note practice' },
+  { id: 'durationFeedback', group: 'practice', name: t`Duration feedback`, summary: t`Shows whether you held a note too short or too long.`,
+    description: t`After releasing a note, shows whether you held it too short, too long, or just right.`,
+    keywords: 'duration feedback hold note timing' },
+  { id: 'tempoTrainer', group: 'practice', name: t`Tempo trainer`, summary: t`Auto-increment BPM as you advance steps correctly.`,
+    description: t`Start at a slower tempo and auto-increment BPM each time you advance a step correctly. Resets when you toggle it off and back on.`,
+    keywords: 'tempo trainer bpm speed practice' },
+  { id: 'practiceStats', group: 'practice', name: t`Practice stats`, summary: t`Accuracy score for the current session.`,
+    description: t`Counts correct and wrong notes in Wait for Input mode and shows your accuracy percentage. Reset the counter any time.`,
+    keywords: 'accuracy stats correct wrong practice' },
   { id: 'trackVu', group: 'editing', name: t`Track color VU meters`, summary: t`Track colour lines pulse with each track's level.`,
     description: t`Each track's colour line in the Tracks panel pulses with its playback level, without opening the Mixer Console.`,
     keywords: 'vu meter level mixer' },

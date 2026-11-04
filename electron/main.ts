@@ -42,7 +42,7 @@ async function copyDemoFilesRecursive(srcDir: string, destDir: string): Promise<
     const srcPath = join(srcDir, entry.name)
     if (entry.isDirectory()) {
       await copyDemoFilesRecursive(srcPath, join(destDir, entry.name))
-    } else if (/\.(mid|midi|kar|musicxml|xml|mxl|gp|gp3|gp4|gp5|gpx|cap)$/i.test(entry.name)) {
+    } else if (!entry.name.startsWith('._') && /\.(mid|midi|kar|musicxml|xml|mxl|gp|gp3|gp4|gp5|gpx|cap)$/i.test(entry.name)) {
       const destPath = join(destDir, entry.name)
       const exists = await access(destPath).then(() => true).catch(() => false)
       if (!exists) await copyFile(srcPath, destPath)
@@ -612,7 +612,7 @@ ipcMain.handle('fs:scanMidiFolder', async (_e, folderPath: string) => {
       for (const e of entries) {
         if (e.isDirectory()) {
           results.push(...scanDir(join(dir, e.name)))
-        } else if (e.isFile() && /\.(mid|midi|kar|musicxml|xml|mxl|gp|gp3|gp4|gp5|gpx|cap)$/i.test(e.name)) {
+        } else if (e.isFile() && !e.name.startsWith('._') && /\.(mid|midi|kar|musicxml|xml|mxl|gp|gp3|gp4|gp5|gpx|cap)$/i.test(e.name)) {
           results.push({ name: e.name, path: join(dir, e.name) })
         }
       }
