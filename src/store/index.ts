@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type {
   ParsedMidi, ParsedTrack, PlaybackState, TrackState,
-  KeyboardSize, KeyboardMode, NoteNaming, Accidentals, ChordEvent, TranscriptEntry, LibraryFile, HitEffectPattern, SoundfontId,
+  KeyboardSize, KeyboardMode, NoteNaming, Accidentals, ChordEvent, TranscriptEntry, LibraryFile, SongLibraryMeta, HitEffectPattern, SoundfontId,
   ChordNamingStyle, ChordTrackingMode, ChordFollowSubMode, ChordReadingMode, TapSession, SettingsGroupId,
 } from '../types'
 import type { DetectedKey } from '../utils/keyDetection'
@@ -360,11 +360,13 @@ interface OrfeoStore {
   libraryFolder: string | null
   libraryFiles: LibraryFile[]
   libraryFavourites: Set<string>
+  libraryMeta: Record<string, SongLibraryMeta>
   setLibraryFolder: (folder: string | null) => void
   setLibraryFiles: (files: LibraryFile[]) => void
   setLibraryFolderAndFiles: (folder: string | null, files: LibraryFile[]) => void
   toggleFavourite: (path: string) => void
   setFavourites: (paths: string[], starred: boolean) => void
+  setLibraryMeta: (path: string, meta: Partial<SongLibraryMeta>) => void
   hiddenLibraryFiles: string[]
   hideLibraryFile: (path: string) => void
   unhideLibraryFile: (path: string) => void
@@ -1197,6 +1199,7 @@ export const useStore = create<OrfeoStore>((set, get) => ({
   libraryFolder: null,
   libraryFiles: [],
   libraryFavourites: new Set(),
+  libraryMeta: {},
   setLibraryFolder: (libraryFolder) => set({ libraryFolder }),
   setLibraryFiles: (libraryFiles) => set({ libraryFiles }),
   setLibraryFolderAndFiles: (libraryFolder, libraryFiles) => set({ libraryFolder, libraryFiles }),
@@ -1211,6 +1214,9 @@ export const useStore = create<OrfeoStore>((set, get) => ({
     for (const p of paths) { if (starred) next.add(p); else next.delete(p) }
     return { libraryFavourites: next }
   }),
+  setLibraryMeta: (path, meta) => set((s) => ({
+    libraryMeta: { ...s.libraryMeta, [path]: { ...s.libraryMeta[path], ...meta } },
+  })),
   // ── Per-session "undo last move" map — lives in the store (not component
   // state) so it survives LibraryPanel unmounting when Settings tabs switch.
   // Never persisted; resets on app restart. ─────────────────────────────────
@@ -1281,6 +1287,9 @@ async function restoreLibraryPrefs() {
     if (typeof prefs.showHiddenLibraryFiles === 'boolean') {
       useStore.setState({ showHiddenLibraryFiles: prefs.showHiddenLibraryFiles })
     }
+    if (prefs.libraryMeta && typeof prefs.libraryMeta === 'object') {
+      useStore.setState({ libraryMeta: prefs.libraryMeta })
+    }
     if (prefs.noteNaming) store.setNoteNaming(prefs.noteNaming)
     if (prefs.accidentals) store.setAccidentals(prefs.accidentals)
     if (prefs.chordTrackingMode === 'auto' || prefs.chordTrackingMode === 'harmony' || prefs.chordTrackingMode === 'follow') {
@@ -1302,6 +1311,7 @@ async function restoreLibraryPrefs() {
     // Native (beta) is Windows-only; elsewhere fall back to Samples
     if (prefs.audioEngine === 'native') store.setAudioEngine(navigator.userAgent.includes('Windows') ? 'native' : 'samples')
     applySamplesIntroducedPref(prefs, store)
+    if (prefs.keyboardSize === 49 || prefs.keyboardSize === 61 || prefs.keyboardSize === 73 || prefs.keyboardSize === 88) store.setKeyboardSize(prefs.keyboardSize)
     if (typeof prefs.showBarNumbers === 'boolean') store.setShowBarNumbers(prefs.showBarNumbers)
     if (typeof prefs.noteEditorEnabled === 'boolean') store.setNoteEditorEnabled(prefs.noteEditorEnabled)
     if (typeof prefs.saveTempoKeyChangesEnabled === 'boolean') store.setSaveTempoKeyChangesEnabled(prefs.saveTempoKeyChangesEnabled)
@@ -1392,6 +1402,7 @@ const _unsubFav = useStore.subscribe((state) => {
       libraryFavourites:      Array.from(state.libraryFavourites),
       hiddenLibraryFiles:     state.hiddenLibraryFiles,
       showHiddenLibraryFiles: state.showHiddenLibraryFiles,
+      libraryMeta:            state.libraryMeta,
     }).catch(() => {})
   }, 1000)
 })
@@ -1475,6 +1486,7 @@ let _prevSelectedSoundfont: string | null = null
 let _prevMasterCompEnabled: boolean | null = null
 let _prevMasterCompPreset: number | null = null
 let _prevAutoLevelOnLoad: boolean | null = null
+let _prevKeyboardSize: number | null = null
 let _prevChordTrackingMode: string | null = null
 let _prevChordFollowSubMode: string | null = null
 let _prevChordFollowGroup: string | null | undefined = undefined
@@ -1546,6 +1558,7 @@ const _unsubPrefs = useStore.subscribe((state) => {
     _prevMasterCompEnabled = state.masterCompEnabled
     _prevMasterCompPreset = state.masterCompPreset
     _prevAutoLevelOnLoad = state.autoLevelOnLoad
+    _prevKeyboardSize = state.keyboardSize
     _prevChordTrackingMode = state.chordTrackingMode
     _prevChordFollowSubMode = state.chordFollowSubMode
     _prevChordFollowGroup = state.chordFollowGroup
@@ -1617,6 +1630,7 @@ const _unsubPrefs = useStore.subscribe((state) => {
     state.hitEffectScope !== _prevHitEffectScope ||
     state.hitEffectColor !== _prevHitEffectColor ||
     state.selectedSoundfont !== _prevSelectedSoundfont ||
+    state.keyboardSize !== _prevKeyboardSize ||
     state.chordTrackingMode !== _prevChordTrackingMode ||
     state.chordFollowSubMode !== _prevChordFollowSubMode ||
     state.chordFollowGroup !== _prevChordFollowGroup ||
@@ -1686,6 +1700,7 @@ const _unsubPrefs = useStore.subscribe((state) => {
     _prevMasterCompEnabled = state.masterCompEnabled
     _prevMasterCompPreset = state.masterCompPreset
     _prevAutoLevelOnLoad = state.autoLevelOnLoad
+    _prevKeyboardSize = state.keyboardSize
     _prevChordTrackingMode = state.chordTrackingMode
     _prevChordFollowSubMode = state.chordFollowSubMode
     _prevChordFollowGroup = state.chordFollowGroup
@@ -1756,6 +1771,7 @@ const _unsubPrefs = useStore.subscribe((state) => {
       hitEffectScope: state.hitEffectScope,
       hitEffectColor: state.hitEffectColor,
       selectedSoundfont: state.selectedSoundfont,
+      keyboardSize: state.keyboardSize,
       chordTrackingMode: state.chordTrackingMode,
       chordFollowSubMode: state.chordFollowSubMode,
       chordFollowGroup: state.chordFollowGroup,

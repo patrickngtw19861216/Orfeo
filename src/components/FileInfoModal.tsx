@@ -5,7 +5,7 @@
 // (inline, staged locally); Save commits one real rename on disk.
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { X, ArrowLeftRight, ChevronDown, Save, FolderOpen } from 'lucide-react'
+import { X, ArrowLeftRight, ChevronDown, Save, FolderOpen, ExternalLink } from 'lucide-react'
 import { useStore } from '../store'
 import OrfeoMark from './OrfeoMark'
 import { MarqueeText } from './MarqueeText'
@@ -45,8 +45,11 @@ interface Props {
 }
 
 export default function FileInfoModal({ filePath, fileName, onClose, onRenamed }: Props) {
-  const noteNaming   = useStore((s) => s.noteNaming)
-  const accidentals  = useStore((s) => s.accidentals)
+  const noteNaming      = useStore((s) => s.noteNaming)
+  const accidentals     = useStore((s) => s.accidentals)
+  const libraryMeta     = useStore((s) => s.libraryMeta)
+  const setLibraryMeta  = useStore((s) => s.setLibraryMeta)
+  const songMeta        = libraryMeta[filePath] ?? {}
 
   const [currentPath, setCurrentPath] = useState(filePath)
   const [currentName, setCurrentName] = useState(fileName)
@@ -435,6 +438,81 @@ export default function FileInfoModal({ filePath, fileName, onClose, onRenamed }
             </div>
           </div>
         )}
+
+        {/* ── Library metadata — MuseScore URL, difficulty level, practice progress ── */}
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--border-row)', paddingTop: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-amber-icon-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+            Library
+          </div>
+          {/* URL row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+            <span style={{ width: 70, flexShrink: 0, fontSize: 10, lineHeight: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-amber-icon-dim)' }}>
+              URL
+            </span>
+            <input
+              type="url"
+              placeholder="https://musescore.com/…"
+              value={songMeta.url ?? ''}
+              onChange={e => setLibraryMeta(filePath, { url: e.target.value || undefined })}
+              style={{
+                flex: 1, minWidth: 0, fontSize: 10, fontFamily: 'var(--font-mono)',
+                background: 'var(--bg-row)', border: '1px solid var(--border2)', borderRadius: 3,
+                padding: '3px 6px', color: 'var(--text-default)', outline: 'none',
+              }}
+            />
+            <button
+              onClick={() => { if (songMeta.url) window.electronAPI?.openExternal?.(songMeta.url) }}
+              disabled={!songMeta.url}
+              title="Open in browser"
+              style={{
+                flexShrink: 0, background: 'none', border: '1px solid var(--border2)', borderRadius: 4,
+                padding: '3px 5px', display: 'flex', alignItems: 'center',
+                color: songMeta.url ? 'var(--text-dim-control)' : 'var(--text-inactive)',
+                cursor: songMeta.url ? 'pointer' : 'default', transition: 'all 0.12s',
+              }}
+              onMouseEnter={e => { if (songMeta.url) { e.currentTarget.style.color = 'var(--text-amber)'; e.currentTarget.style.borderColor = 'var(--accent-amber-strong)' } }}
+              onMouseLeave={e => { e.currentTarget.style.color = songMeta.url ? 'var(--text-dim-control)' : 'var(--text-inactive)'; e.currentTarget.style.borderColor = 'var(--border2)' }}
+            >
+              <ExternalLink size={11} />
+            </button>
+          </div>
+          {/* Level + Progress row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+            <span style={{ width: 70, flexShrink: 0, fontSize: 10, lineHeight: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-amber-icon-dim)' }}>
+              Level
+            </span>
+            <select
+              value={songMeta.level ?? ''}
+              onChange={e => setLibraryMeta(filePath, { level: e.target.value ? Number(e.target.value) : undefined })}
+              style={{
+                width: 60, fontSize: 10, fontFamily: 'var(--font-mono)',
+                background: 'var(--bg-row)', border: '1px solid var(--border2)', borderRadius: 3,
+                padding: '3px 4px', color: 'var(--text-default)', outline: 'none',
+              }}
+            >
+              <option value="">—</option>
+              {[1,2,3,4,5,6,7,8,9].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span style={{ width: 55, flexShrink: 0, fontSize: 10, lineHeight: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-amber-icon-dim)' }}>
+              Progress
+            </span>
+            <select
+              value={songMeta.progress ?? ''}
+              onChange={e => setLibraryMeta(filePath, { progress: (e.target.value || undefined) as typeof songMeta.progress })}
+              style={{
+                flex: 1, minWidth: 0, fontSize: 10, fontFamily: 'var(--font-mono)',
+                background: 'var(--bg-row)', border: '1px solid var(--border2)', borderRadius: 3,
+                padding: '3px 4px', color: 'var(--text-default)', outline: 'none',
+              }}
+            >
+              <option value="">—</option>
+              <option value="not_started">Not started</option>
+              <option value="learning">Learning</option>
+              <option value="practicing">Practicing</option>
+              <option value="mastered">Mastered</option>
+            </select>
+          </div>
+        </div>
 
         {/* ── Orfeo History — real edits (Playback Editor, Note Editor, tempo/
             key, mixer saves) are embedded directly in the .mid file as

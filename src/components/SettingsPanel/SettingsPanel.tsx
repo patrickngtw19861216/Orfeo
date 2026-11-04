@@ -308,6 +308,7 @@ function LibraryPanel({ hidden = false }: { hidden?: boolean }) {
   const lastFolderOf       = useStore((s) => s.lastFolderOf)
   const setLastFolderOf    = useStore((s) => s.setLastFolderOf)
   const foldersWithUndo    = useStore((s) => s.foldersWithUndo)
+  const libraryMeta        = useStore((s) => s.libraryMeta)
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<'all' | 'starred'>('all')
   const [librarySearch, setLibrarySearch] = useState('')
@@ -1516,6 +1517,22 @@ function LibraryPanel({ hidden = false }: { hidden?: boolean }) {
                         <Undo2 size={11} />
                       </RowIconButton>
                     )}
+                    {(() => {
+                      const p = libraryMeta[file.path]?.progress
+                      if (!p || p === 'not_started') return null
+                      const color = p === 'learning' ? 'var(--text-amber)' : p === 'practicing' ? '#4a9eff' : '#4ade80'
+                      const label = p === 'learning' ? 'Learning' : p === 'practicing' ? 'Practicing' : 'Mastered'
+                      return (
+                        <Tooltip title={label} placement="right">
+                          <span
+                            aria-label={label}
+                            onMouseEnter={() => suppress(true)}
+                            onMouseLeave={() => suppress(false)}
+                            style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }}
+                          />
+                        </Tooltip>
+                      )
+                    })()}
                     <TempoWarningDot path={file.path} onHoverChange={suppress} />
                     <FavouriteStar
                       starred={starred}
