@@ -189,7 +189,14 @@ function noteOn(key: string, note: number, raw: number, stamp: number, t0: numbe
           useStore.setState({ tempoTrainerCurrentPct: nextPct })
           useStore.getState().setBpm(nextBpm)
         }
-        setTimeout(() => stepEvents(1), 180)
+        if (ws.interactivePlayback) {
+          // Resume song playback from just after the chord cluster
+          const resumeTime = useStore.getState().currentTime + 0.035
+          useStore.setState({ interactivePlayback: false, playbackState: 'paused' })
+          setTimeout(() => useStore.setState({ currentTime: resumeTime, playbackState: 'playing' }), 20)
+        } else {
+          setTimeout(() => stepEvents(1), 180)
+        }
       }
     } else {
       // ── Wrong note ───────────────────────────────────────────────────────

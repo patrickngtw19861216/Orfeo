@@ -155,6 +155,8 @@ export interface SongLibraryMeta {
   url?: string
   level?: number  // 1–9 (MuseScore difficulty scale)
   progress?: 'not_started' | 'learning' | 'practicing' | 'mastered'
+  pdfPath?: string        // downloaded PDF file path
+  musicxmlPath?: string   // downloaded MusicXML file path
 }
 
 export interface ChordEvent {

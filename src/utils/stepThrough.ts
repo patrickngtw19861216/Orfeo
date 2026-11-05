@@ -73,6 +73,14 @@ function steps(): Step[] {
   return _cache.steps
 }
 
+// First step strictly after `t` — used by interactive playback in usePlayback.ts
+export function getNextStepAfter(t: number): Step | null {
+  const list = steps()
+  let lo = 0, hi = list.length
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (list[mid].time <= t) lo = mid + 1; else hi = mid }
+  return lo < list.length ? list[lo] : null
+}
+
 // First step at or after `t` (binary search; steps are time-ordered)
 function indexAtOrAfter(list: Step[], t: number): number {
   let lo = 0, hi = list.length

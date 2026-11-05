@@ -619,7 +619,25 @@ ipcMain.handle('fs:scanMidiFolder', async (_e, folderPath: string) => {
       return results
     } catch { return [] }
   }
-  return scanDir(folderPath).sort((a, b) => a.name.localeCompare(b.name))
+  const all = scanDir(folderPath)
+  // ── Dedup: if the same base name exists as both a MIDI file and a foreign
+  // format file (xml, gp*, etc.), keep only the MIDI file so the Library
+  // doesn't show duplicate entries for the same song.
+  const midiExts = /\.(mid|midi|kar)$/i
+  const byBase = new Map<string, { name: string; path: string }[]>()
+  for (const f of all) {
+    const base = f.path.replace(/\.[^.]+$/, '')
+    const group = byBase.get(base) ?? []
+    group.push(f)
+    byBase.set(base, group)
+  }
+  const deduped: { name: string; path: string }[] = []
+  for (const group of byBase.values()) {
+    if (group.length === 1) { deduped.push(group[0]); continue }
+    const midi = group.find(f => midiExts.test(f.name))
+    deduped.push(midi ?? group[0])
+  }
+  return deduped.sort((a, b) => a.name.localeCompare(b.name))
 })
 // ── Size + modified time for many files at once (no reads) — lets the
 // tempo-warning Library scan skip files it has already checked. ─────────

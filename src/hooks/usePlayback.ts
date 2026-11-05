@@ -1,6 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useStore } from '../store'
 import { startCountIn } from '../utils/countInRunner'
+import { getNextStepAfter } from '../utils/stepThrough'
+
+const INTERACTIVE_LOOKAHEAD = 0.05  // seconds before step time to trigger pause
+const STEP_GROUP_SEC = 0.035        // skip past chord cluster on resume (matches GROUP_SEC + buffer)
 
 export function usePlayback() {
   const rafRef = useRef<number | null>(null)
@@ -8,6 +12,8 @@ export function usePlayback() {
   // Fallback clock when JZZ player not available yet
   const fallbackStartPerfRef = useRef(0)
   const fallbackStartTimeRef = useRef(0)
+  // Interactive playback: minimum step time to look for (avoids re-pausing at same step)
+  const minNextStepTimeRef = useRef<number>(-Infinity)
 
   const stopRaf = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -61,6 +67,22 @@ export function usePlayback() {
               useStore.setState({ currentTime: duration, playbackState: 'stopped' })
               stopRaf(); return
             }
+
+            // ── Interactive playback: pause before each step and wait for MIDI input ──
+            const { waitForInputEnabled, detectedKey } = useStore.getState()
+            if (waitForInputEnabled) {
+              const searchFrom = Math.max(minNextStepTimeRef.current, secs - INTERACTIVE_LOOKAHEAD)
+              const next = getNextStepAfter(searchFrom - 1e-4)
+              if (next && secs >= next.time - INTERACTIVE_LOOKAHEAD && next.time > minNextStepTimeRef.current - 1e-4) {
+                minNextStepTimeRef.current = next.time + STEP_GROUP_SEC
+                const transpose = detectedKey?.transpose ?? 0
+                stopRaf()
+                useStore.setState({ currentTime: next.time, playbackState: 'paused', interactivePlayback: true })
+                useStore.getState()._setWaitForInputExpected(new Set(next.notes.map(n => n.midi + transpose)))
+                return
+              }
+            }
+
             useStore.setState({ currentTime: secs })
             rafRef.current = requestAnimationFrame(tick)
             return
@@ -93,6 +115,22 @@ export function usePlayback() {
         useStore.setState({ currentTime: duration, playbackState: 'stopped' })
         stopRaf(); return
       }
+
+      // ── Interactive playback (fallback path) ───────────────────────────────
+      const { waitForInputEnabled: wfi, detectedKey: dk } = useStore.getState()
+      if (wfi) {
+        const searchFrom = Math.max(minNextStepTimeRef.current, newTime - INTERACTIVE_LOOKAHEAD)
+        const next = getNextStepAfter(searchFrom - 1e-4)
+        if (next && newTime >= next.time - INTERACTIVE_LOOKAHEAD && next.time > minNextStepTimeRef.current - 1e-4) {
+          minNextStepTimeRef.current = next.time + STEP_GROUP_SEC
+          const transpose = dk?.transpose ?? 0
+          stopRaf()
+          useStore.setState({ currentTime: next.time, playbackState: 'paused', interactivePlayback: true })
+          useStore.getState()._setWaitForInputExpected(new Set(next.notes.map(n => n.midi + transpose)))
+          return
+        }
+      }
+
       useStore.setState({ currentTime: newTime })
       rafRef.current = requestAnimationFrame(tick)
     }
@@ -115,13 +153,16 @@ export function usePlayback() {
 
   const stop = useCallback(() => {
     stopRaf()
-    useStore.setState({ playbackState: 'stopped', currentTime: 0 })
+    minNextStepTimeRef.current = -Infinity
+    useStore.setState({ playbackState: 'stopped', currentTime: 0, interactivePlayback: false })
   }, [stopRaf])
 
   const seek = useCallback((timeSec: number) => {
     const clamped = Math.max(0, timeSec)
     const wasPlaying = useStore.getState().playbackState === 'playing'
     stopRaf()
+    minNextStepTimeRef.current = clamped - 1e-3
+    useStore.setState({ interactivePlayback: false })
     if (wasPlaying) {
       useStore.setState({ currentTime: clamped, playbackState: 'paused' })
     } else {
@@ -156,6 +197,9 @@ export function usePlayback() {
       if (state.playbackState === 'playing' && prev.playbackState !== 'playing') {
         fallbackStartPerfRef.current = performance.now()
         fallbackStartTimeRef.current = state.currentTime
+        // Reset interactive step tracker to current position so we look for
+        // steps from here — covers both fresh play and interactive resume
+        minNextStepTimeRef.current = state.currentTime - 1e-3
         startRaf()
       }
       if (state.playbackState !== 'playing' && prev.playbackState === 'playing') {

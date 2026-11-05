@@ -512,6 +512,56 @@ export default function FileInfoModal({ filePath, fileName, onClose, onRenamed }
               <option value="mastered">Mastered</option>
             </select>
           </div>
+          {/* PDF path row */}
+          {songMeta.pdfPath && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+              <span style={{ width: 70, flexShrink: 0, fontSize: 10, lineHeight: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-amber-icon-dim)' }}>
+                PDF
+              </span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={songMeta.pdfPath}>
+                {songMeta.pdfPath.split('/').pop()}
+              </span>
+              <button
+                onClick={() => window.electronAPI?.showItemInFolder?.(songMeta.pdfPath!)}
+                title="Show in Finder"
+                style={{
+                  flexShrink: 0, background: 'none', border: '1px solid var(--border2)', borderRadius: 4,
+                  padding: '3px 5px', display: 'flex', alignItems: 'center',
+                  color: 'var(--text-dim-control)', cursor: 'pointer', transition: 'all 0.12s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-amber)'; e.currentTarget.style.borderColor = 'var(--accent-amber-strong)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-dim-control)'; e.currentTarget.style.borderColor = 'var(--border2)' }}
+              >
+                <FolderOpen size={11} />
+              </button>
+            </div>
+          )}
+          {/* MusicXML path row */}
+          {songMeta.musicxmlPath && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+              <span style={{ width: 70, flexShrink: 0, fontSize: 10, lineHeight: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-amber-icon-dim)' }}>
+                XML
+              </span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={songMeta.musicxmlPath}>
+                {songMeta.musicxmlPath.split('/').pop()}
+              </span>
+              <button
+                onClick={() => window.electronAPI?.showItemInFolder?.(songMeta.musicxmlPath!)}
+                title="Show in Finder"
+                style={{
+                  flexShrink: 0, background: 'none', border: '1px solid var(--border2)', borderRadius: 4,
+                  padding: '3px 5px', display: 'flex', alignItems: 'center',
+                  color: 'var(--text-dim-control)', cursor: 'pointer', transition: 'all 0.12s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-amber)'; e.currentTarget.style.borderColor = 'var(--accent-amber-strong)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-dim-control)'; e.currentTarget.style.borderColor = 'var(--border2)' }}
+              >
+                <FolderOpen size={11} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Orfeo History — real edits (Playback Editor, Note Editor, tempo/

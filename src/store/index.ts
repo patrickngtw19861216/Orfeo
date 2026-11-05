@@ -484,6 +484,8 @@ interface OrfeoStore {
   setWaitForInputEnabled: (v: boolean) => void
   waitForInputExpected: Set<number>
   _setWaitForInputExpected: (s: Set<number>) => void
+  interactivePlayback: boolean   // true when paused mid-playback waiting for MIDI input
+  setInteractivePlayback: (v: boolean) => void
   // Wrong note red flash (feature 1)
   wrongFlashKeys: Set<number>
   _setWrongFlashKeys: (s: Set<number>) => void
@@ -1119,6 +1121,8 @@ export const useStore = create<OrfeoStore>((set, get) => ({
   setWaitForInputEnabled: (waitForInputEnabled) => set({ waitForInputEnabled }),
   waitForInputExpected: new Set<number>(),
   _setWaitForInputExpected: (waitForInputExpected) => set({ waitForInputExpected }),
+  interactivePlayback: false,
+  setInteractivePlayback: (interactivePlayback) => set({ interactivePlayback }),
   wrongFlashKeys: new Set<number>(),
   _setWrongFlashKeys: (wrongFlashKeys) => set({ wrongFlashKeys }),
   handFilter: 'both',

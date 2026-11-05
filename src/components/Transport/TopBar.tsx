@@ -17,11 +17,13 @@ import LoopRegionStrip from '../LoopRegionStrip'
 import Tooltip from '../Tooltip'
 import { TapTempoPad } from './TapTempoPad'
 import { TempoWarning } from './TempoWarning'
+import { OutOfRangeWarning } from './OutOfRangeWarning'
 import { useCurrentTempoTrust } from '../../hooks/useTempoTrustScan'
 import { stepDisplayedBpm } from '../../utils/bpmStep'
 import { isCountingIn, cancelCountIn } from '../../utils/countInRunner'
 import { ContextMenu, ContextMenuItem, ContextMenuDivider, useMenuDismiss } from '../ContextMenu'
 import { t } from '../../utils/i18n'
+import { getNoteLabel } from '../../utils/noteNames'
 import { useMidiSettings } from '../../store/midiSettings'
 import { shortName } from '../../utils/midiDeviceNames'
 import { confirmDiscardDirtyNoteEdits } from '../../utils/noteEditorState'
@@ -84,6 +86,9 @@ export default function TopBar() {
   const detectedKey = useStore((s) => s.detectedKey)
   const metronomeEnabled = useStore((s) => s.metronomeEnabled)
   const setMetronomeEnabled = useStore((s) => s.setMetronomeEnabled)
+  const [bpmEditing, setBpmEditing] = useState(false)
+  const [bpmInput, setBpmInput] = useState('')
+  const bpmInputRef = useRef<HTMLInputElement>(null)
   const [metroMenu, setMetroMenu] = useState<{ x: number; y: number } | null>(null)
   const countInEnabled = useStore((s) => s.countInEnabled)
   const countInBars = useStore((s) => s.countInBars)
@@ -310,15 +315,48 @@ export default function TopBar() {
       {/* ── BPM ── (tighter gap/padding than the other groups: with the TAP pad
           the left column must still fit at a 1366 px window) */}
       <div className="app-no-drag" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0 var(--space-2)', flexShrink: 0 }}>
-        <Tooltip title={`Tempo: ${liveBpm || '—'} BPM`} description={"The song's current playback tempo,\nscaled by your speed setting."} placement="bottom">
+        <Tooltip title={`Tempo: ${liveBpm || '—'} BPM`} description={"The song's current playback tempo,\nscaled by your speed setting.\nClick number to type a value."} placement="bottom">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
               <span style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>BPM</span>
               <span style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>TEMPO</span>
             </div>
-            <span style={{ color: isTempoChanged ? 'var(--text-amber)' : 'var(--text-active)', fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, minWidth: 36, textAlign: 'right', lineHeight: 1 }}>
-              {midi ? liveBpm : '—'}
-            </span>
+            {bpmEditing ? (
+              <input
+                ref={bpmInputRef}
+                type="number" min={20} max={300}
+                value={bpmInput}
+                onChange={e => setBpmInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    const v = Math.round(Number(bpmInput))
+                    if (v >= 20 && v <= 300) setBpm(v)
+                    setBpmEditing(false)
+                  } else if (e.key === 'Escape') {
+                    setBpmEditing(false)
+                  }
+                }}
+                onBlur={() => {
+                  const v = Math.round(Number(bpmInput))
+                  if (v >= 20 && v <= 300) setBpm(v)
+                  setBpmEditing(false)
+                }}
+                style={{
+                  width: 48, fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700,
+                  color: 'var(--text-amber)', background: 'var(--bg-modal)',
+                  border: '1px solid var(--accent-amber-strong)', borderRadius: 4,
+                  padding: '0 2px', textAlign: 'right', lineHeight: 1,
+                  MozAppearance: 'textfield',
+                } as React.CSSProperties}
+              />
+            ) : (
+              <span
+                onClick={() => { if (midi) { setBpmInput(String(Math.round(liveBpm ?? bpm))); setBpmEditing(true); setTimeout(() => bpmInputRef.current?.select(), 0) } }}
+                style={{ color: isTempoChanged ? 'var(--text-amber)' : 'var(--text-active)', fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, minWidth: 36, textAlign: 'right', lineHeight: 1, cursor: midi ? 'text' : 'default' }}
+              >
+                {midi ? liveBpm : '—'}
+              </span>
+            )}
           </div>
         </Tooltip>
         {/* ±1 steps the DISPLAYED tempo (file tempo at the playhead, incl. any
@@ -415,15 +453,34 @@ export default function TopBar() {
             topmost line is comparably light (small text) to the left/right
             groups' top lines, now that all three groups share the same
             top-aligned start (see the grid's alignItems comment above). */}
-        {midi?.fileName ? (
-          <span style={{ color: 'var(--text-default)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-ui)', lineHeight: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 340 }}>
-            {midi.fileName.replace(/\.(mid|midi)$/i, '')}
-          </span>
-        ) : (
-          <span style={{ color: 'var(--text-default)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-ui)', lineHeight: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 340 }}>
-            No file open
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {midi?.fileName ? (
+            <span style={{ color: 'var(--text-default)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-ui)', lineHeight: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 340 }}>
+              {midi.fileName.replace(/\.(mid|midi)$/i, '')}
+            </span>
+          ) : (
+            <span style={{ color: 'var(--text-default)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-ui)', lineHeight: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 340 }}>
+              No file open
+            </span>
+          )}
+          <OutOfRangeWarning />
+        </div>
+        {/* RH range info */}
+        {midi && (() => {
+          let lo = Infinity, hi = -Infinity, hasHand = false
+          for (const track of midi.tracks) {
+            for (const note of track.notes) {
+              if (note.hand === 'R') { hasHand = true; if (note.midi < lo) lo = note.midi; if (note.midi > hi) hi = note.midi }
+            }
+          }
+          if (!hasHand || lo === Infinity) return null
+          const span = ((hi - lo) / 12).toFixed(1)
+          return (
+            <span style={{ color: 'var(--text-faint)', fontSize: 10, fontFamily: 'var(--font-ui)', lineHeight: 1 }}>
+              RH {getNoteLabel(lo, 'english')}–{getNoteLabel(hi, 'english')} ({span} oct)
+            </span>
+          )
+        })()}
         {/* Transport */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <TBtn onClick={stop} disabled={!midi} title="Go to start" oneLine><SkipBack size={16} strokeWidth={1.5} /></TBtn>
