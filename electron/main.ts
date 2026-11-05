@@ -626,7 +626,7 @@ ipcMain.handle('fs:scanMidiFolder', async (_e, folderPath: string) => {
   const midiExts = /\.(mid|midi|kar)$/i
   const byBase = new Map<string, { name: string; path: string }[]>()
   for (const f of all) {
-    const base = f.path.replace(/\.[^.]+$/, '')
+    const base = f.name.replace(/\.[^.]+$/, '')
     const group = byBase.get(base) ?? []
     group.push(f)
     byBase.set(base, group)
